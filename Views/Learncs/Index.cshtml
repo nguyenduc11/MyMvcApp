@@ -1,0 +1,193 @@
+@{
+    ViewData["Title"] = "Learn CS Page";
+}
+
+<div class="container">
+    <h1 class="display-4">C Sharp Introduction</h1>
+    <p>Here's a comprehensive tutorial on C# from basic to advanced levels. This guide will cover key concepts, syntax,
+        and features of the language.</p>
+
+    <h2>C# Tutorial</h2>
+
+    <h3>Table of Contents</h3>
+    <ol>
+        <li><a href="#introduction-to-c">Introduction to C#</a></li>
+        <li><a href="#setting-up-the-environment">Setting Up the Environment</a></li>
+        <li><a href="#basic-syntax">Basic Syntax</a></li>
+        <li><a href="#data-types-and-variables">Data Types and Variables</a></li>
+        <li><a href="#control-structures">Control Structures</a></li>
+        <li><a href="#functions-and-methods">Functions and Methods</a></li>
+        <li><a href="#object-oriented-programming-oop">Object-Oriented Programming (OOP)</a></li>
+        <li><a href="#advanced-oop-concepts">Advanced OOP Concepts</a></li>
+        <li><a href="#collections">Collections</a></li>
+        <li><a href="#linq-language-integrated-query">LINQ (Language Integrated Query)</a></li>
+        <li><a href="#exception-handling">Exception Handling</a></li>
+        <li><a href="#file-io">File I/O</a></li>
+        <li><a href="#asynchronous-programming">Asynchronous Programming</a></li>
+        <li><a href="#unit-testing">Unit Testing</a></li>
+        <li><a href="#conclusion">Conclusion</a></li>
+    </ol>
+
+    <hr>
+
+    <h3 id="introduction-to-c">1. Introduction to C#</h3>
+    <p>C# is a modern, object-oriented programming language developed by Microsoft. It is part of the .NET framework and
+        is designed for building a variety of applications, including web, mobile, desktop, and games.</p>
+
+    <h3 id="setting-up-the-environment">2. Setting Up the Environment</h3>
+    <ul>
+        <li><strong>Install Visual Studio</strong>: Download and install Visual Studio, which is the most popular IDE
+            for C#. Choose the Community edition for free access.</li>
+        <li><strong>Create a new project</strong>: Start Visual Studio, select "Create a new project," and choose
+            "Console App" for a basic C# application.</li>
+    </ul>
+
+    <h3 id="basic-syntax">3. Basic Syntax</h3>
+    <pre><code>using System;
+class Program {
+    static void Main(string[] args) {
+        Console.WriteLine("Hello, World!");
+    }
+}</code></pre>
+    <ul>
+        <li><code>using System</code>: Imports the System namespace.</li>
+        <li><code>class Program</code>: Defines a class named Program.</li>
+        <li><code>static void Main</code>: The entry point of a C# application.</li>
+    </ul>
+
+    <h3 id="data-types-and-variables">4. Data Types and Variables</h3>
+    <p>C# is statically typed, meaning you need to declare a variable's type.</p>
+    <ul>
+        <li><strong>Basic Data Types</strong>:
+            <ul>
+                <li><code>int</code>: Integer</li>
+                <li><code>double</code>: Floating point number</li>
+                <li><code>char</code>: Character</li>
+                <li><code>string</code>: Sequence of characters</li>
+                <li><code>bool</code>: Boolean value</li>
+            </ul>
+        </li>
+    </ul>
+    <pre><code>int age = 30;
+double height = 5.9;
+char initial = 'A';
+string name = "Alice";
+bool isStudent = true;</code></pre>
+
+    <h3 id="control-structures">5. Control Structures</h3>
+    <p>C# supports various control structures:</p>
+    <ul>
+        <li><strong>Conditional Statements</strong>:
+            <pre><code>if (age &gt;= 18) {
+    Console.WriteLine("Adult");
+} else {
+    Console.WriteLine("Minor");
+}</code></pre>
+        </li>
+        <li><strong>Switch Statement</strong>:
+            <pre><code>switch (day) {
+    case "Monday":
+        Console.WriteLine("Start of the week");
+        break; // other cases
+}</code></pre>
+        </li>
+        <li><strong>Loops</strong>:
+            <pre><code>for (int i = 0; i &lt; 5; i++) {
+    Console.WriteLine(i);
+}</code></pre>
+        </li>
+    </ul>
+
+    <h3 id="functions-and-methods">6. Functions and Methods</h3>
+    <p>Functions are blocks of code that perform a specific task.</p>
+    <pre><code>static int Add(int a, int b) {
+    return a + b;
+}</code></pre>
+
+    <h3 id="object-oriented-programming-oop">7. Object-Oriented Programming (OOP)</h3>
+    <p>C# is an object-oriented language. Key concepts include:</p>
+    <ul>
+        <li><strong>Classes and Objects</strong>:
+            <pre><code>class Car {
+    public string Model;
+    public void Drive() {
+        Console.WriteLine("Driving");
+    }
+}
+Car myCar = new Car();
+myCar.Model = "Toyota";
+myCar.Drive();</code></pre>
+        </li>
+    </ul>
+
+    <h3 id="advanced-oop-concepts">8. Advanced OOP Concepts</h3>
+    <ul>
+        <li><strong>Inheritance</strong>:
+            <pre><code>class Vehicle {
+    public void Start() { }
+}
+class Car : Vehicle {
+    public void Drive() { }
+}</code></pre>
+        </li>
+        <li><strong>Polymorphism</strong>:
+            <pre><code>class Animal {
+    public virtual void Speak() {
+        Console.WriteLine("Animal speaks");
+    }
+}
+class Dog : Animal {
+    public override void Speak() {
+        Console.WriteLine("Bark");
+    }
+}</code></pre>
+        </li>
+        <li><strong>Encapsulation</strong>:
+            <pre><code>class Person {
+    private string name;
+    public string Name {
+        get { return name; }
+        set { name = value; }
+    }
+}</code></pre>
+        </li>
+    </ul>
+
+    <h3 id="collections">9. Collections</h3>
+    <p>C# provides several collection types, such as arrays, lists, and dictionaries.</p>
+    <ul>
+        <li><strong>Array</strong>:
+            <pre><code>int[] numbers = { 1, 2, 3, 4 };</code></pre>
+        </li>
+        <li><strong>List</strong>:
+            <pre><code>List&lt;string&gt; names = new List&lt;string&gt;();
+names.Add("Alice");</code></pre>
+        </li>
+        <li><strong>Dictionary</strong>:
+            <pre><code>Dictionary&lt;string, int&gt; ages = new Dictionary&lt;string, int&gt;();
+ages["Alice"] = 30;</code></pre>
+        </li>
+    </ul>
+
+    <h3 id="linq-language-integrated-query">10. LINQ (Language Integrated Query)</h3>
+    <p>LINQ allows you to query collections in a declarative manner.</p>
+    <pre><code>var result = from name in names
+             where name.StartsWith("A")
+             select name;</code></pre>
+
+    <h3 id="exception-handling">11. Exception Handling</h3>
+    <p>Handle exceptions using try-catch blocks.</p>
+    <pre><code>try {
+    int division = 10 / 0;
+} catch (DivideByZeroException ex) {
+    Console.WriteLine("Cannot divide by zero.");
+}</code></pre>
+
+    <h3 id="file-io">12. File I/O</h3>
+    <p>Use <code>System.IO</code> for file operations.</p>
+    <pre><code>using System.IO;
+File.WriteAllText("test.txt", "Hello, World!");
+string content = File.ReadAllText("test.txt");</code></pre>
+
+
+</div>
