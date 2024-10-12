@@ -8,13 +8,12 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy the project files and restore dependencies
-COPY ["MyMvcApp/MyMvcApp.csproj", "MyMvcApp/"]
-RUN dotnet restore "MyMvcApp/MyMvcApp.csproj"
+# Copy the project file and restore dependencies
+COPY ["MyMvcApp.csproj", "./"]
+RUN dotnet restore "MyMvcApp.csproj"
 
 # Copy the rest of the application files and build the app
 COPY . .
-WORKDIR "/src/MyMvcApp"
 RUN dotnet build "MyMvcApp.csproj" -c Release -o /app/build
 
 # Publish the application to a folder
