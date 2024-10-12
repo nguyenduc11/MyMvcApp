@@ -1,0 +1,30 @@
+# Railway configuration file
+
+[build]
+  # Define the Dockerfile that Railway will use to build the app
+  dockerfile = "Dockerfile"
+  # Specify the directory where the Dockerfile is located
+  context = "."
+
+[deploy]
+  # Specify the service name on Railway
+  service = "mvc-app-service"
+
+  # Define the environments for the app
+  [deploy.production]
+    # Use Railway's default deployment method for production
+    num_instances = 1
+    env = "production"
+
+[env]
+  # Define environment variables for your app (if needed)
+  ASPNETCORE_ENVIRONMENT = "Production"
+  DOTNET_RUNNING_IN_CONTAINER = true
+  PORT = 80
+
+[healthcheck]
+  # Healthcheck to ensure the app is running properly
+  path = "/home"
+  interval = 10
+  timeout = 5
+  retries = 3
