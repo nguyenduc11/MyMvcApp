@@ -4,4 +4,13 @@
 <h1>@ViewData["Title"]</h1>
 
 <p>This is a test page</p>
-<p class="btn btn-danger">Test Button</p>
+<button id="testButton" class="btn btn-danger">Test Button</button>
+
+@section Scripts {
+    <script>
+        // Bind click event to the button
+        document.getElementById("testButton").addEventListener("click", function () {
+            console.log("Button clicked from ASP Net Core");
+        });
+    </script>
+}
