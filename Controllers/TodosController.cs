@@ -84,8 +84,6 @@ namespace MyMvcApp.Controllers
         // GET: /todos/delete/{id}
         public async Task<IActionResult> Delete(int id)
         {
-            Console.WriteLine("Deleting todo item", id);
-            // Console.WriteLine(id);
             var todoItem = await _context.TodoItems.FindAsync(id);
             if (todoItem == null)
             {
