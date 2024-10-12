@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "Railway Deployment Guide";
+}
+<h1>@ViewData["Title"]</h1>
+<h1>Dockerfile</h1>
+<p>
+    # Use the official .NET image as a base image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+# Use the .NET SDK image for building the application
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy the project file and restore dependencies
+COPY ["MyMvcApp.csproj", "./"]
+RUN dotnet restore "MyMvcApp.csproj"
+
+# Copy the rest of the application files and build the app
+COPY . .
+RUN dotnet build "MyMvcApp.csproj" -c Release -o /app/build
+
+# Publish the application to a folder
+FROM build AS publish
+RUN dotnet publish "MyMvcApp.csproj" -c Release -o /app/publish
+
+# Create the final image for deployment
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "MyMvcApp.dll"]
+
+</p>
+
+<h1>Railway.toml Content</h1>
+<p>
+    # Railway configuration file
+
+[build]
+  # Define the Dockerfile that Railway will use to build the app
+  dockerfile = "Dockerfile"
+  # Specify the directory where the Dockerfile is located
+  context = "."
+
+[deploy]
+  # Specify the service name on Railway
+  service = "mvc-app-service"
+
+  # Define the environments for the app
+  [deploy.production]
+    # Use Railway's default deployment method for production
+    num_instances = 1
+    env = "production"
+
+[env]
+  # Define environment variables for your app (if needed)
+  ASPNETCORE_ENVIRONMENT = "Production"
+  DOTNET_RUNNING_IN_CONTAINER = true
+  PORT = 80
+
+[healthcheck]
+  # Healthcheck to ensure the app is running properly
+  path = "/home"
+  interval = 10
+  timeout = 5
+  retries = 3
+
+</p>
