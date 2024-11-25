@@ -10,6 +10,10 @@
   # Specify the service name on Railway
   service = "mvc-app-service"
   startCommand = "dotnet MyMvcApp.dll"
+  healthcheckPath = "/home"
+  healthcheckTimeout = 300
+  restartPolicyType = "on_failure"
+  restartPolicyMaxRetries = 5
 
   # Define the environments for the app
   [deploy.production]
@@ -17,11 +21,21 @@
     num_instances = 1
     env = "production"
 
-# Link to PostgreSQL service
-[[services]]
+[service]
+  name = "mvc-app-service"
+  type = "web"
+  plan = "free"
+  domains = []
+  numInstances = 1
+  env = "production"
+
+# PostgreSQL service configuration
+[service.postgres]
   name = "postgres"
   type = "postgres"
   plan = "free"
+  domains = []
+  numInstances = 1
 
 [env]
   # Define environment variables for your app (if needed)
