@@ -11,50 +11,63 @@ builder.Services.AddControllersWithViews();
 // Configure database context based on environment
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // Check if we're in production (Railway)
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (!string.IsNullOrEmpty(databaseUrl))
-    {
-        try
-        {
-            // Parse Railway's DATABASE_URL
-            var databaseUri = new Uri(databaseUrl);
-            var userInfo = databaseUri.UserInfo.Split(':');
-            var builder = new NpgsqlConnectionStringBuilder
-            {
-                Host = databaseUri.Host,
-                Port = databaseUri.Port,
-                Username = userInfo[0],
-                Password = userInfo[1],
-                Database = databaseUri.LocalPath.TrimStart('/'),
-                SslMode = Npgsql.SslMode.Require,
-                TrustServerCertificate = true,
-                Pooling = true,
-                MinPoolSize = 0,
-                MaxPoolSize = 100,
-                ConnectionIdleLifetime = 300
-            };
+    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+    var isProduction = environment == "Production";
 
-            var connectionString = builder.ToString();
-            options.UseNpgsql(connectionString, npgsqlOptions =>
-            {
-                npgsqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 3,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
-                    errorCodesToAdd: null);
-            });
-        }
-        catch (Exception ex)
+    if (isProduction)
+    {
+        // Use Railway's PostgreSQL in production
+        var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+        if (!string.IsNullOrEmpty(databaseUrl))
         {
-            Console.WriteLine($"Error configuring PostgreSQL: {ex.Message}");
-            throw;
+            try
+            {
+                var databaseUri = new Uri(databaseUrl);
+                var userInfo = databaseUri.UserInfo.Split(':');
+                var builder = new NpgsqlConnectionStringBuilder
+                {
+                    Host = databaseUri.Host,
+                    Port = databaseUri.Port,
+                    Username = userInfo[0],
+                    Password = userInfo[1],
+                    Database = databaseUri.LocalPath.TrimStart('/'),
+                    SslMode = Npgsql.SslMode.Require,
+                    TrustServerCertificate = true,
+                    Pooling = true,
+                    MinPoolSize = 0,
+                    MaxPoolSize = 100,
+                    ConnectionIdleLifetime = 300
+                };
+
+                options.UseNpgsql(builder.ToString(), npgsqlOptions =>
+                {
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorCodesToAdd: null);
+                });
+            }
+            catch (Exception ex)
+            {
+                var logger = LoggerFactory.Create(builder => builder.AddConsole())
+                    .CreateLogger("Program");
+                logger.LogError(ex, "Error configuring PostgreSQL");
+                throw;
+            }
+        }
+        else
+        {
+            throw new Exception("DATABASE_URL environment variable is not set in production");
         }
     }
     else
     {
         // Use SQLite in development
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        options.UseSqlite(connectionString);
+        options.UseSqlite(connectionString, sqliteOptions =>
+        {
+            sqliteOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+        });
     }
 });
 
