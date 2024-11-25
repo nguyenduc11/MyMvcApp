@@ -15,61 +15,68 @@ Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable(
 
 if (isProduction)
 {
-    // Log all environment variables for debugging
-    Console.WriteLine("Available environment variables:");
-    foreach (var env in Environment.GetEnvironmentVariables().Keys)
-    {
-        if (env.ToString().StartsWith("PG") || env.ToString().Contains("DATABASE"))
-        {
-            Console.WriteLine($"{env}: {(env.ToString().Contains("PASSWORD") ? "REDACTED" : Environment.GetEnvironmentVariable(env.ToString()))}");
-        }
-    }
-
     var connectionBuilder = new NpgsqlConnectionStringBuilder();
+    bool connectionConfigured = false;
+
+    // First try DATABASE_URL
     var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    
+    Console.WriteLine($"DATABASE_URL present: {!string.IsNullOrEmpty(databaseUrl)}");
+
     if (!string.IsNullOrEmpty(databaseUrl))
     {
         try
         {
-            // Parse Railway's DATABASE_URL
             var uri = new Uri(databaseUrl);
             var userInfo = uri.UserInfo.Split(':');
-            
+
             connectionBuilder.Host = uri.Host;
             connectionBuilder.Port = uri.Port;
             connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
             connectionBuilder.Username = userInfo[0];
             connectionBuilder.Password = userInfo[1];
+            connectionConfigured = true;
+
+            Console.WriteLine("Successfully parsed DATABASE_URL");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
-            // Continue to try individual environment variables
         }
     }
 
-    // If DATABASE_URL parsing failed or wasn't available, use individual environment variables
-    if (string.IsNullOrEmpty(connectionBuilder.Password))
+    // If DATABASE_URL failed, try individual variables
+    if (!connectionConfigured)
     {
-        Console.WriteLine("Using individual PostgreSQL environment variables");
+        Console.WriteLine("Attempting to use individual PostgreSQL environment variables");
         
-        var host = Environment.GetEnvironmentVariable("PGHOST");
-        var port = Environment.GetEnvironmentVariable("PGPORT");
-        var database = Environment.GetEnvironmentVariable("PGDATABASE");
-        var username = Environment.GetEnvironmentVariable("PGUSER");
-        var password = Environment.GetEnvironmentVariable("PGPASSWORD");
+        var pgHost = Environment.GetEnvironmentVariable("PGHOST");
+        var pgPort = Environment.GetEnvironmentVariable("PGPORT");
+        var pgDatabase = Environment.GetEnvironmentVariable("PGDATABASE") ?? Environment.GetEnvironmentVariable("POSTGRES_DB");
+        var pgUser = Environment.GetEnvironmentVariable("PGUSER") ?? Environment.GetEnvironmentVariable("POSTGRES_USER");
+        var pgPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
-        if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(password))
+        Console.WriteLine($"PGHOST: {pgHost}");
+        Console.WriteLine($"PGPORT: {pgPort}");
+        Console.WriteLine($"Database: {pgDatabase}");
+        Console.WriteLine($"Username: {pgUser}");
+        Console.WriteLine($"Password length: {(string.IsNullOrEmpty(pgPassword) ? 0 : pgPassword.Length)}");
+
+        if (!string.IsNullOrEmpty(pgHost) && !string.IsNullOrEmpty(pgPassword))
         {
-            throw new Exception("Required PostgreSQL environment variables are not set. Need PGHOST and PGPASSWORD at minimum.");
-        }
+            connectionBuilder.Host = pgHost;
+            connectionBuilder.Port = int.TryParse(pgPort, out int port) ? port : 5432;
+            connectionBuilder.Database = pgDatabase ?? "railway";
+            connectionBuilder.Username = pgUser ?? "postgres";
+            connectionBuilder.Password = pgPassword;
+            connectionConfigured = true;
 
-        connectionBuilder.Host = host;
-        connectionBuilder.Port = int.TryParse(port, out int portNum) ? portNum : 5432;
-        connectionBuilder.Database = database ?? "railway";
-        connectionBuilder.Username = username ?? "postgres";
-        connectionBuilder.Password = password;
+            Console.WriteLine("Successfully configured using individual variables");
+        }
+    }
+
+    if (!connectionConfigured)
+    {
+        throw new Exception("Failed to configure PostgreSQL connection. Neither DATABASE_URL nor individual environment variables are properly set.");
     }
 
     // Add common settings
@@ -80,12 +87,11 @@ if (isProduction)
     var connectionString = connectionBuilder.ToString();
 
     // Log connection info (without sensitive data)
-    Console.WriteLine($"Database connection info:");
+    Console.WriteLine($"Final database connection info:");
     Console.WriteLine($"Host: {connectionBuilder.Host}");
     Console.WriteLine($"Port: {connectionBuilder.Port}");
     Console.WriteLine($"Database: {connectionBuilder.Database}");
     Console.WriteLine($"Username: {connectionBuilder.Username}");
-    Console.WriteLine("Password: [REDACTED]");
     Console.WriteLine($"SSL Mode: {connectionBuilder.SslMode}");
 
     // Configure DbContext
