@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -7,74 +7,29 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/MyMvcApp.styles.css" asp-append-version="true" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-    <style>
-        .icon-square {
-            width: 3rem;
-            height: 3rem;
-            border-radius: 0.75rem;
-        }
-    </style>
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">MyMvcApp</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
-                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">MyMvcApp</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-house-door"></i> Home
-                            </a>
+                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="blogDropdown" role="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-journal-text"></i> Blog
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="blogDropdown">
-                                <li><a class="dropdown-item" asp-area="Blog" asp-controller="Posts" asp-action="Index">
-                                    <i class="bi bi-list-ul"></i> All Posts</a></li>
-                                <li><a class="dropdown-item" asp-area="Blog" asp-controller="Posts" asp-action="Create">
-                                    <i class="bi bi-plus-circle"></i> Create Post</a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="toolsDropdown" role="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-tools"></i> Tools
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="toolsDropdown">
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Todos" asp-action="Index">
-                                    <i class="bi bi-check2-square"></i> Todo List</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Learncs" asp-action="Index">
-                                    <i class="bi bi-code-slash"></i> CSharp Intro</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Railway" asp-action="Index">
-                                    <i class="bi bi-train-front"></i> Railway</a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="aboutDropdown" role="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-info-circle"></i> About
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="aboutDropdown">
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Privacy">
-                                    <i class="bi bi-shield-check"></i> Privacy</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Test">
-                                    <i class="bi bi-bug"></i> Test Page</a></li>
-                            </ul>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
@@ -83,7 +38,7 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2023 - MyMvcApp - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2024 - MyMvcApp - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
 

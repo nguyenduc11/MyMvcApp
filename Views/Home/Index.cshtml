@@ -2,62 +2,7 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="container">
-    <!-- Hero Section -->
-    <div class="px-4 py-5 my-5 text-center">
-        <h1 class="display-4 fw-bold">Welcome to MyMvcApp</h1>
-        <div class="col-lg-6 mx-auto">
-            <p class="lead mb-4">
-                A modern web application built with ASP.NET Core, featuring a blog system, todo management, and more.
-            </p>
-            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
-                <a asp-area="Blog" asp-controller="Posts" asp-action="Index" class="btn btn-primary btn-lg px-4 gap-3">
-                    <i class="bi bi-journal-text"></i> View Blog
-                </a>
-                <a asp-area="Blog" asp-controller="Posts" asp-action="Create" class="btn btn-outline-secondary btn-lg px-4">
-                    <i class="bi bi-plus-circle"></i> Create Post
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Features Section -->
-    <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
-        <div class="col d-flex align-items-start">
-            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-                <i class="bi bi-journal-text"></i>
-            </div>
-            <div>
-                <h3 class="fs-2">Blog System</h3>
-                <p>Share your thoughts and ideas through our modern blogging platform. Create, edit, and manage your posts with ease.</p>
-                <a asp-area="Blog" asp-controller="Posts" asp-action="Index" class="btn btn-primary">
-                    View Posts
-                </a>
-            </div>
-        </div>
-        <div class="col d-flex align-items-start">
-            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-                <i class="bi bi-check2-square"></i>
-            </div>
-            <div>
-                <h3 class="fs-2">Todo Management</h3>
-                <p>Keep track of your tasks and stay organized with our todo management system.</p>
-                <a asp-controller="Todos" asp-action="Index" class="btn btn-primary">
-                    Manage Todos
-                </a>
-            </div>
-        </div>
-        <div class="col d-flex align-items-start">
-            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-                <i class="bi bi-code-slash"></i>
-            </div>
-            <div>
-                <h3 class="fs-2">Learning Resources</h3>
-                <p>Explore C# programming and railway management through our interactive learning modules.</p>
-                <a asp-controller="Learncs" asp-action="Index" class="btn btn-primary">
-                    Start Learning
-                </a>
-            </div>
-        </div>
-    </div>
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>
