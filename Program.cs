@@ -20,6 +20,14 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
         
         if (isProduction)
         {
+            // Configure the PostgreSQL connection string
+            var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                // Fallback to configuration if environment variable is not set
+                connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+            }
+
             // First try using Railway's internal connection (preferred for services within Railway)
             var internalConnectionString = new NpgsqlConnectionStringBuilder
             {
