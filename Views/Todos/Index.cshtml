@@ -4,31 +4,48 @@
     ViewData["Title"] = "Todo List";
 }
 
-<h2>Todo List</h2>
+<div class="container mt-4">
+    <h2 class="text-center">Todo List</h2>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Task</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
+    <div class="mb-3 text-right">
+        <a asp-action="Add" class="btn btn-primary">Add New Todo</a>
+    </div>
+
+    <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
             <tr>
-                <td>@item.Task</td>
-                <td>@item.Description</td>
-                <td>@(item.IsCompleted ? "Completed" : "Pending")</td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning">Edit</a>
-                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger">Delete</a>
-                </td>
+                <th>Task</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Actions</th>
             </tr>
-        }
-    </tbody>
-</table>
-
-<a asp-action="Add" class="btn btn-primary">Add New Todo</a>
+        </thead>
+        <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="4" class="text-center">No tasks available.</td>
+                </tr>
+            }
+            else
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.Task</td>
+                        <td>@item.Description</td>
+                        <td>
+                            <span class="badge @(item.IsCompleted ? "badge-success" : "badge-warning")">
+                                @(item.IsCompleted ? "Completed" : "Pending")
+                            </span>
+                        </td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Edit</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Delete</a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
