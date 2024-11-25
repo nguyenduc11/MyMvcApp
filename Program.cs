@@ -2,111 +2,79 @@ using Microsoft.EntityFrameworkCore;
 using MyMvcApp.Models;
 using Npgsql;
 using System;
-using DotEnv.Net;
 
 var builder = WebApplication.CreateBuilder(args);
+var isProduction = builder.Environment.IsProduction();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Log environment information
+Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
+Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 
 // Configure database contexts
 void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
 {
     services.AddDbContext<T>(options =>
     {
-        var isProduction = builder.Environment.IsProduction();
-        Console.WriteLine($"Environment IsProduction: {isProduction}");
-        Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
-        Console.WriteLine($"DOTNET_RUNNING_IN_CONTAINER: {Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")}");
-        
-        if (isProduction)
+        // Build connection string using environment variables
+        var connectionBuilder = new NpgsqlConnectionStringBuilder();
+
+        // Try to use DATABASE_URL first
+        var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+        if (!string.IsNullOrEmpty(databaseUrl))
         {
-            // Log environment variables for debugging
-            Console.WriteLine("Database Environment Variables:");
-            Console.WriteLine($"DATABASE_URL: {Environment.GetEnvironmentVariable("DATABASE_URL")}");
-            Console.WriteLine($"PGHOST: {Environment.GetEnvironmentVariable("PGHOST")}");
-            Console.WriteLine($"PGPORT: {Environment.GetEnvironmentVariable("PGPORT")}");
-            Console.WriteLine($"PGDATABASE: {Environment.GetEnvironmentVariable("PGDATABASE")}");
-            Console.WriteLine($"PGUSER: {Environment.GetEnvironmentVariable("PGUSER")}");
-            Console.WriteLine($"PGPASSWORD length: {(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PGPASSWORD")) ? "0" : Environment.GetEnvironmentVariable("PGPASSWORD").Length)}");
-
-            // Load environment variables from .env file in development
-            if (!isProduction)
+            try
             {
-                DotEnv.Load();
-                DotEnv.AutoTrim = true;
-                DotEnv.AutoParse = true;
+                var uri = new Uri(databaseUrl);
+                var userInfo = uri.UserInfo.Split(':');
+                connectionBuilder.Host = uri.Host;
+                connectionBuilder.Port = uri.Port > 0 ? uri.Port : 5432;
+                connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
+                connectionBuilder.Username = userInfo[0];
+                connectionBuilder.Password = userInfo[1];
+                
+                Console.WriteLine($"Using DATABASE_URL for connection. Host: {connectionBuilder.Host}, Port: {connectionBuilder.Port}, Database: {connectionBuilder.Database}");
             }
-
-            // Log environment type
-            Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
-
-            // Build connection string using environment variables
-            var connectionBuilder = new NpgsqlConnectionStringBuilder();
-
-            // Try to use DATABASE_URL first
-            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-            if (!string.IsNullOrEmpty(databaseUrl))
+            catch (Exception ex)
             {
-                try
-                {
-                    var uri = new Uri(databaseUrl);
-                    var userInfo = uri.UserInfo.Split(':');
-                    connectionBuilder.Host = uri.Host;
-                    connectionBuilder.Port = uri.Port > 0 ? uri.Port : 5432;
-                    connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
-                    connectionBuilder.Username = userInfo[0];
-                    connectionBuilder.Password = userInfo[1];
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
-                }
+                Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
             }
-
-            // If DATABASE_URL parsing failed or wasn't available, use individual environment variables
-            if (string.IsNullOrEmpty(connectionBuilder.Password))
-            {
-                connectionBuilder.Host = Environment.GetEnvironmentVariable("PGHOST") ?? "localhost";
-                connectionBuilder.Port = int.TryParse(Environment.GetEnvironmentVariable("PGPORT"), out int port) ? port : 5432;
-                connectionBuilder.Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway";
-                connectionBuilder.Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres";
-                connectionBuilder.Password = Environment.GetEnvironmentVariable("PGPASSWORD");
-            }
-
-            // Add common settings
-            connectionBuilder.SslMode = isProduction ? SslMode.Require : SslMode.Prefer;
-            connectionBuilder.TrustServerCertificate = true;
-            connectionBuilder.Timeout = 30;
-
-            var connectionString = connectionBuilder.ToString();
-
-            // Log the connection string (without password)
-            var logBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Password = "REDACTED" };
-            Console.WriteLine($"Connection string (redacted): {logBuilder}");
-
-            // Configure DbContext
-            options.UseNpgsql(connectionString, npgsqlOptions =>
-            {
-                npgsqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
-                    errorCodesToAdd: null);
-                npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-            });
         }
-        else
+
+        // If DATABASE_URL parsing failed or wasn't available, use individual environment variables
+        if (string.IsNullOrEmpty(connectionBuilder.Password))
         {
-            // Use SQLite in development
-            var dbName = typeof(T).Name.Replace("Context", "").ToLower();
-            var connectionString = $"Data Source=./{dbName}.db";
-            Console.WriteLine($"Configuring {typeof(T).Name} with SQLite. Connection string: {connectionString}");
+            connectionBuilder.Host = Environment.GetEnvironmentVariable("PGHOST") ?? "localhost";
+            connectionBuilder.Port = int.TryParse(Environment.GetEnvironmentVariable("PGPORT"), out int port) ? port : 5432;
+            connectionBuilder.Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway";
+            connectionBuilder.Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres";
+            connectionBuilder.Password = Environment.GetEnvironmentVariable("PGPASSWORD");
             
-            options.UseSqlite(connectionString, sqliteOptions =>
-            {
-                sqliteOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-            });
+            Console.WriteLine($"Using individual environment variables for connection. Host: {connectionBuilder.Host}, Port: {connectionBuilder.Port}, Database: {connectionBuilder.Database}");
         }
+
+        // Add common settings
+        connectionBuilder.SslMode = isProduction ? SslMode.Require : SslMode.Prefer;
+        connectionBuilder.TrustServerCertificate = true;
+        connectionBuilder.Timeout = 30;
+
+        var connectionString = connectionBuilder.ToString();
+
+        // Log the connection string (without password)
+        var logBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Password = "REDACTED" };
+        Console.WriteLine($"Connection string (redacted): {logBuilder}");
+
+        // Configure DbContext
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
+            npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+        });
     });
 }
 
