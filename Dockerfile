@@ -1,35 +1,38 @@
 # Use the official .NET SDK image for building
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+WORKDIR /source
 
-# Copy csproj and restore as distinct layers
-COPY ["MyMvcApp.csproj", "./"]
-RUN dotnet restore
+# Copy csproj and restore dependencies
+COPY *.csproj .
+RUN dotnet restore --use-current-runtime
 
-# Copy everything else and build
+# Copy the rest of the files
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+
+# Build and publish the app
+RUN dotnet publish -c Release -o /app --no-restore --use-current-runtime
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=build /app/publish .
 
-# Install PostgreSQL client
+# Copy the published files from the build stage
+COPY --from=build /app .
+
+# Install PostgreSQL client (if needed)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set default environment variables
+# Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV PGHOST=postgres.railway.internal
-ENV PGPORT=5432
-ENV PGDATABASE=railway
-ENV PGUSER=postgres
 
-# Expose the port
+# Create a non-root user and switch to it
+RUN useradd -u 5678 --create-home appuser
+USER appuser
+
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "MyMvcApp.dll"]
