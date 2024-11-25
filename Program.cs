@@ -88,25 +88,51 @@ else
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        context.Database.Migrate();
+        
+        // Log the current database provider
+        var database = context.Database;
+        logger.LogInformation("Database provider: {Provider}", database.ProviderName);
+        logger.LogInformation("Connection string: {ConnectionString}", database.GetConnectionString());
+        
+        // Ensure database is created
+        context.Database.EnsureCreated();
+        
+        // Apply pending migrations
+        if (database.GetPendingMigrations().Any())
+        {
+            logger.LogInformation("Applying pending migrations...");
+            database.Migrate();
+        }
         
         // Test the database connection
-        var canConnect = context.Database.CanConnect();
+        var canConnect = database.CanConnect();
         if (!canConnect)
         {
             throw new Exception("Cannot connect to the database after migration");
         }
+        
+        logger.LogInformation("Database connection and migrations successful");
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating or connecting to the database: {Message}", ex.Message);
-        Console.WriteLine($"Database Error: {ex.Message}");
-        Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-        throw;
+        logger.LogError(ex, "An error occurred while setting up the database: {Message}", ex.Message);
+        
+        // Log additional details in development
+        if (app.Environment.IsDevelopment())
+        {
+            logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
+            logger.LogError("Source: {Source}", ex.Source);
+            if (ex.InnerException != null)
+            {
+                logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
+            }
+        }
+        throw; // Re-throw the exception after logging
     }
 }
 

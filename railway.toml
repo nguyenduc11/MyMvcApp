@@ -29,6 +29,12 @@
   # PGPASSWORD
   # PGPORT
   # PGUSER
+  
+  # Additional configuration for better error visibility in production
+  ASPNETCORE_DETAILED_ERRORS = "true"
+  Logging__LogLevel__Default = "Information"
+  Logging__LogLevel__Microsoft = "Warning"
+  Logging__LogLevel__Microsoft.EntityFrameworkCore = "Information"
 
 [healthcheck]
   # Healthcheck to ensure the app is running properly
