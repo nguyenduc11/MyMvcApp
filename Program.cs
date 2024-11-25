@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using MyMvcApp.Models; // Adjust this to match your namespace
+using MyMvcApp.Models;
+using Npgsql;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,8 +15,21 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
     if (!string.IsNullOrEmpty(databaseUrl))
     {
-        // Use PostgreSQL in production
-        options.UseNpgsql(databaseUrl);
+        // Parse Railway's DATABASE_URL
+        var databaseUri = new Uri(databaseUrl);
+        var userInfo = databaseUri.UserInfo.Split(':');
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = databaseUri.Host,
+            Port = databaseUri.Port,
+            Username = userInfo[0],
+            Password = userInfo[1],
+            Database = databaseUri.LocalPath.TrimStart('/'),
+            SslMode = Npgsql.SslMode.Require,
+            TrustServerCertificate = true
+        };
+
+        options.UseNpgsql(builder.ToString());
     }
     else
     {
@@ -32,6 +46,23 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
+}
+
+// Apply migrations
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+        throw; // Re-throw to see the error in production
+    }
 }
 
 app.UseHttpsRedirection();
