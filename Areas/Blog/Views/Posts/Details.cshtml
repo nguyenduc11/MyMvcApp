@@ -1,0 +1,66 @@
+@model BlogPost
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container">
+    <article class="blog-post">
+        <h1 class="blog-post-title">@Model.Title</h1>
+        
+        <p class="blog-post-meta">
+            By @Model.Author on @Model.CreatedAt.ToString("MMMM dd, yyyy")
+            @if (Model.UpdatedAt.HasValue)
+            {
+                <br />
+                <small class="text-muted">Last updated: @Model.UpdatedAt.Value.ToString("MMMM dd, yyyy")</small>
+            }
+        </p>
+
+        @if (!string.IsNullOrEmpty(Model.Summary))
+        {
+            <div class="lead mb-4">
+                @Model.Summary
+            </div>
+        }
+
+        <div class="blog-post-content">
+            @Html.Raw(Model.Content.Replace(Environment.NewLine, "<br />"))
+        </div>
+
+        <div class="mt-4">
+            @if (!Model.IsPublished)
+            {
+                <span class="badge bg-warning text-dark">Draft</span>
+            }
+            else
+            {
+                <span class="badge bg-success">Published</span>
+            }
+        </div>
+
+        <div class="mt-4">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+            <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+        </div>
+    </article>
+</div>
+
+@section Styles {
+    <style>
+        .blog-post {
+            margin-bottom: 4rem;
+        }
+        .blog-post-title {
+            margin-bottom: 0.25rem;
+        }
+        .blog-post-meta {
+            margin-bottom: 1.25rem;
+            color: #727272;
+        }
+        .blog-post-content {
+            line-height: 1.8;
+        }
+    </style>
+}

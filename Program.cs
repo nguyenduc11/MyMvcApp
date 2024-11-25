@@ -10,10 +10,7 @@ builder.Services.AddControllersWithViews();
 // Configure SQLite database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // Retrieve the connection string from configuration
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-    // Use the connection string for SQLite
     options.UseSqlite(connectionString);
 });
 

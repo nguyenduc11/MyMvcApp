@@ -1,0 +1,47 @@
+@model IEnumerable<BlogPost>
+
+@{
+    ViewData["Title"] = "Blog Posts";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+
+    <p>
+        <a asp-action="Create" class="btn btn-primary">Create New Post</a>
+    </p>
+
+    <div class="row">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Title</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">By @item.Author</h6>
+                        <p class="card-text">@(item.Summary ?? item.Content.Substring(0, Math.Min(200, item.Content.Length)) + "...")</p>
+                        <div class="card-text">
+                            <small class="text-muted">
+                                Created: @item.CreatedAt.ToString("MMM dd, yyyy")
+                                @if (item.UpdatedAt.HasValue)
+                                {
+                                    <br />
+                                    @:Updated: @item.UpdatedAt.Value.ToString("MMM dd, yyyy")
+                                }
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm">Details</a>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary btn-sm">Edit</a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Delete</a>
+                        @if (!item.IsPublished)
+                        {
+                            <span class="badge bg-warning text-dark float-end">Draft</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

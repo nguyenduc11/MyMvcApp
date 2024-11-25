@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyMvcApp.Areas.Blog.Models;
 
 namespace MyMvcApp.Models
 {
@@ -11,6 +12,8 @@ namespace MyMvcApp.Models
 
         // DbSet for TodoItem
         public DbSet<TodoItem> TodoItems { get; set; }
+
+        public DbSet<BlogPost> BlogPosts { get; set; } = null!;
 
         // Optional: You can override OnModelCreating to configure the model further if needed
         protected override void OnModelCreating(ModelBuilder modelBuilder)
