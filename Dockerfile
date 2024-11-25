@@ -1,33 +1,31 @@
-# Use the official .NET image as a base image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 80
-EXPOSE 443
+# Use the official .NET SDK image for building
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
 
-# Install PostgreSQL client libraries
+# Copy csproj and restore as distinct layers
+COPY ["MyMvcApp.csproj", "./"]
+RUN dotnet restore
+
+# Copy everything else and build
+COPY . .
+RUN dotnet publish -c Release -o /app/publish
+
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Install PostgreSQL client
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Use the .NET SDK image for building the application
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Copy the project file and restore dependencies
-COPY ["MyMvcApp.csproj", "./"]
-RUN dotnet restore "MyMvcApp.csproj"
+# Expose the port
+EXPOSE 8080
 
-# Copy the rest of the application files and build the app
-COPY . .
-RUN dotnet build "MyMvcApp.csproj" -c Release -o /app/build
-
-# Publish the application to a folder
-FROM build AS publish
-RUN dotnet publish "MyMvcApp.csproj" -c Release -o /app/publish
-
-# Create the final image for deployment
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "MyMvcApp.dll"]

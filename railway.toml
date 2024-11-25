@@ -12,3 +12,6 @@
   startCommand = "dotnet MyMvcApp.dll"
   restartPolicyType = "on_failure"
   restartPolicyMaxRetries = 5
+
+[deploy.env]
+  PORT = "8080"
