@@ -31,15 +31,6 @@ if (isProduction)
                 maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorCodesToAdd: null);
         }));
-
-    builder.Services.AddDbContext<BlogDbContext>(options =>
-        options.UseNpgsql(databaseUrl, npgsqlOptions =>
-        {
-            npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorCodesToAdd: null);
-        }));
 }
 else
 {
@@ -47,10 +38,6 @@ else
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(connectionString));
-        
-    // Add BlogDbContext with its own database file
-    builder.Services.AddDbContext<BlogDbContext>(options =>
-        options.UseSqlite("Data Source=blogapp.db"));
 }
 
 var app = builder.Build();
