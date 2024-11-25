@@ -1,17 +1,28 @@
 using Microsoft.EntityFrameworkCore;
 using MyMvcApp.Models; // Adjust this to match your namespace
-using System.IO;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Configure SQLite database context
+// Configure database context based on environment
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseSqlite(connectionString);
+    // Check if we're in production (Railway)
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrEmpty(databaseUrl))
+    {
+        // Use PostgreSQL in production
+        options.UseNpgsql(databaseUrl);
+    }
+    else
+    {
+        // Use SQLite in development
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        options.UseSqlite(connectionString);
+    }
 });
 
 var app = builder.Build();
