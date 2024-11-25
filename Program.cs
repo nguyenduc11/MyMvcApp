@@ -14,15 +14,35 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
     services.AddDbContext<T>(options =>
     {
         var isProduction = builder.Environment.IsProduction();
+        Console.WriteLine($"Environment IsProduction: {isProduction}");
+        Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
         
         if (isProduction)
         {
+            // Log all available environment variables
+            Console.WriteLine("Available Environment Variables:");
+            foreach (var envVar in Environment.GetEnvironmentVariables().Keys)
+            {
+                Console.WriteLine($"  {envVar}: {Environment.GetEnvironmentVariable(envVar?.ToString() ?? "")}");
+            }
+
             // Try to get connection info from individual environment variables first
             var host = Environment.GetEnvironmentVariable("PGHOST");
             var port = Environment.GetEnvironmentVariable("PGPORT");
             var database = Environment.GetEnvironmentVariable("PGDATABASE");
             var username = Environment.GetEnvironmentVariable("PGUSER");
             var password = Environment.GetEnvironmentVariable("PGPASSWORD");
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            var databasePublicUrl = Environment.GetEnvironmentVariable("DATABASE_PUBLIC_URL");
+
+            Console.WriteLine($"\nPostgreSQL Connection Variables for {typeof(T).Name}:");
+            Console.WriteLine($"  PGHOST: {host}");
+            Console.WriteLine($"  PGPORT: {port}");
+            Console.WriteLine($"  PGDATABASE: {database}");
+            Console.WriteLine($"  PGUSER: {username}");
+            Console.WriteLine($"  PGPASSWORD: {password?.Length > 0}");
+            Console.WriteLine($"  DATABASE_URL exists: {!string.IsNullOrEmpty(databaseUrl)}");
+            Console.WriteLine($"  DATABASE_PUBLIC_URL exists: {!string.IsNullOrEmpty(databasePublicUrl)}");
 
             string connectionString;
             
@@ -33,6 +53,7 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
                 !string.IsNullOrEmpty(username) && 
                 !string.IsNullOrEmpty(password))
             {
+                Console.WriteLine("Using individual PostgreSQL environment variables");
                 var npgsqlBuilder = new NpgsqlConnectionStringBuilder
                 {
                     Host = host,
@@ -52,18 +73,28 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
             else
             {
                 // Fallback to DATABASE_URL if individual variables are not available
-                var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-                if (string.IsNullOrEmpty(databaseUrl))
+                var dbUrl = databaseUrl;
+                if (string.IsNullOrEmpty(dbUrl))
                 {
                     // If neither option is available, try DATABASE_PUBLIC_URL as last resort
-                    databaseUrl = Environment.GetEnvironmentVariable("DATABASE_PUBLIC_URL");
-                    if (string.IsNullOrEmpty(databaseUrl))
+                    dbUrl = databasePublicUrl;
+                    if (string.IsNullOrEmpty(dbUrl))
                     {
-                        throw new Exception($"No PostgreSQL connection information available for {typeof(T).Name}. Please set either individual PostgreSQL environment variables or DATABASE_URL");
+                        var errorMessage = $"No PostgreSQL connection information available for {typeof(T).Name}. Environment variables status:\n" +
+                            $"Individual vars complete: {!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password)}\n" +
+                            $"DATABASE_URL available: {!string.IsNullOrEmpty(databaseUrl)}\n" +
+                            $"DATABASE_PUBLIC_URL available: {!string.IsNullOrEmpty(databasePublicUrl)}";
+                        Console.WriteLine(errorMessage);
+                        throw new Exception(errorMessage);
                     }
+                    Console.WriteLine("Using DATABASE_PUBLIC_URL for connection");
+                }
+                else
+                {
+                    Console.WriteLine("Using DATABASE_URL for connection");
                 }
 
-                var databaseUri = new Uri(databaseUrl);
+                var databaseUri = new Uri(dbUrl);
                 var userInfo = databaseUri.UserInfo.Split(':');
                 var npgsqlBuilder = new NpgsqlConnectionStringBuilder
                 {

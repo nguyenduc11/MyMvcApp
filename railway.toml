@@ -9,12 +9,19 @@
 [deploy]
   # Specify the service name on Railway
   service = "mvc-app-service"
+  startCommand = "dotnet MyMvcApp.dll"
 
   # Define the environments for the app
   [deploy.production]
     # Use Railway's default deployment method for production
     num_instances = 1
     env = "production"
+
+# Link to PostgreSQL service
+[[services]]
+  name = "postgres"
+  type = "postgres"
+  plan = "free"
 
 [env]
   # Define environment variables for your app (if needed)
