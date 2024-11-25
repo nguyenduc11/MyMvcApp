@@ -20,80 +20,33 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
         
         if (isProduction)
         {
-            // Configure the PostgreSQL connection string
-            var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING");
+            // Configure the PostgreSQL connection string using Railway's environment variables
+            var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
             if (string.IsNullOrEmpty(connectionString))
             {
-                // Fallback to configuration if environment variable is not set
-                connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+                // Build connection string from individual environment variables
+                var builder = new NpgsqlConnectionStringBuilder
+                {
+                    Host = Environment.GetEnvironmentVariable("PGHOST") ?? "postgres.railway.internal",
+                    Port = int.Parse(Environment.GetEnvironmentVariable("PGPORT") ?? "5432"),
+                    Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway",
+                    Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres",
+                    Password = Environment.GetEnvironmentVariable("PGPASSWORD"),
+                    SslMode = SslMode.Require,
+                    TrustServerCertificate = true
+                };
+                connectionString = builder.ToString();
             }
 
-            // First try using Railway's internal connection (preferred for services within Railway)
-            var internalConnectionString = new NpgsqlConnectionStringBuilder
+            // Configure DbContext with the connection string
+            options.UseNpgsql(connectionString, npgsqlOptions =>
             {
-                Host = "postgres.railway.internal",
-                Port = 5432,
-                Database = "railway",
-                Username = "postgres",
-                Password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? Environment.GetEnvironmentVariable("PGPASSWORD"),
-                SslMode = Npgsql.SslMode.Prefer, // Changed to Prefer for internal connections
-                TrustServerCertificate = true,
-                Pooling = true,
-                MinPoolSize = 0,
-                MaxPoolSize = 100,
-                ConnectionIdleLifetime = 300
-            }.ToString();
-
-            try
-            {
-                Console.WriteLine($"Attempting to connect to PostgreSQL using internal connection...");
-                options.UseNpgsql(internalConnectionString, npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorCodesToAdd: null);
-                    npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to connect using internal connection: {ex.Message}");
-                Console.WriteLine("Falling back to external connection...");
-
-                // Fallback to external connection (DATABASE_PUBLIC_URL)
-                var publicUrl = Environment.GetEnvironmentVariable("DATABASE_PUBLIC_URL");
-                if (string.IsNullOrEmpty(publicUrl))
-                {
-                    throw new Exception("No PostgreSQL connection information available. Both internal and external connections failed.");
-                }
-
-                var databaseUri = new Uri(publicUrl);
-                var userInfo = databaseUri.UserInfo.Split(':');
-                var externalConnectionString = new NpgsqlConnectionStringBuilder
-                {
-                    Host = databaseUri.Host,
-                    Port = databaseUri.Port,
-                    Database = databaseUri.LocalPath.TrimStart('/'),
-                    Username = userInfo[0],
-                    Password = userInfo[1],
-                    SslMode = Npgsql.SslMode.Require,
-                    TrustServerCertificate = true,
-                    Pooling = true,
-                    MinPoolSize = 0,
-                    MaxPoolSize = 100,
-                    ConnectionIdleLifetime = 300
-                }.ToString();
-
-                options.UseNpgsql(externalConnectionString, npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorCodesToAdd: null);
-                    npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-                });
-            }
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorCodesToAdd: null);
+                npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+            });
         }
         else
         {
