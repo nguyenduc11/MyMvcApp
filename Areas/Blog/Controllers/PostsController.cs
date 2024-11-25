@@ -8,9 +8,9 @@ namespace MyMvcApp.Areas.Blog.Controllers
     [Area("Blog")]
     public class PostsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly BlogDbContext _context;
 
-        public PostsController(ApplicationDbContext context)
+        public PostsController(BlogDbContext context)
         {
             _context = context;
         }
@@ -136,8 +136,9 @@ namespace MyMvcApp.Areas.Blog.Controllers
             if (blogPost != null)
             {
                 _context.BlogPosts.Remove(blogPost);
-                await _context.SaveChangesAsync();
             }
+
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
