@@ -21,17 +21,23 @@ COPY --from=build /app/publish .
 # Install PostgreSQL client (if needed)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       libpq-dev \
+       postgresql-client \
     && rm -rf /var/lib/apt/lists/*
+
+# Create a script to run migrations and start the app
+RUN echo '#!/bin/bash\n\
+dotnet MyMvcApp.dll' > /app/start.sh \
+    && chmod +x /app/start.sh
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Create a non-root user and switch to it
-RUN useradd -u 5678 --create-home appuser
+RUN useradd -u 5678 --create-home appuser \
+    && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "MyMvcApp.dll"]
+CMD ["/app/start.sh"]

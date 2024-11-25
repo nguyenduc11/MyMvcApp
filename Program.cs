@@ -37,7 +37,11 @@ if (isProduction)
             Username = userInfo[0],
             Password = userInfo[1],
             Database = databaseUri.AbsolutePath.TrimStart('/'),
-            SslMode = SslMode.Require
+            SslMode = SslMode.Require,
+            Pooling = true,
+            MinPoolSize = 0,
+            MaxPoolSize = 10,
+            ConnectionIdleLifetime = 300
         };
 
         var connectionString = connBuilder.ToString();
@@ -69,6 +73,64 @@ else
 }
 
 var app = builder.Build();
+
+// Apply migrations and initialize database
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        Console.WriteLine("Ensuring database is created...");
+        context.Database.EnsureCreated();
+        
+        Console.WriteLine("Checking pending migrations...");
+        if (context.Database.GetPendingMigrations().Any())
+        {
+            Console.WriteLine("Applying pending migrations...");
+            context.Database.Migrate();
+            Console.WriteLine("Migrations applied successfully");
+        }
+        else
+        {
+            Console.WriteLine("No pending migrations");
+        }
+
+        // Seed initial data if needed
+        if (!context.TodoItems.Any())
+        {
+            Console.WriteLine("Seeding initial data...");
+            context.TodoItems.AddRange(
+                new TodoItem
+                {
+                    Task = "Sample Task 1",
+                    Description = "This is a sample task",
+                    IsCompleted = false,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new TodoItem
+                {
+                    Task = "Sample Task 2",
+                    Description = "This is another sample task",
+                    IsCompleted = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            );
+            context.SaveChanges();
+            Console.WriteLine("Initial data seeded successfully");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error during database initialization: {ex.Message}");
+    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+    // In production, we might want to continue running even if migrations fail
+    if (!isProduction)
+    {
+        throw;
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
