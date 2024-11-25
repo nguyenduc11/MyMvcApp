@@ -4,13 +4,13 @@ WORKDIR /source
 
 # Copy csproj and restore dependencies
 COPY *.csproj .
-RUN dotnet restore --use-current-runtime
+RUN dotnet restore
 
 # Copy the rest of the files
 COPY . .
 
 # Build and publish the app
-RUN dotnet publish -c Release -o /app --no-restore --use-current-runtime
+RUN dotnet publish -c Release -o /app
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
