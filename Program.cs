@@ -16,6 +16,7 @@ Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable(
 if (isProduction)
 {
     // Log all environment variables for debugging
+    Console.WriteLine("Available environment variables:");
     foreach (var env in Environment.GetEnvironmentVariables().Keys)
     {
         if (env.ToString().StartsWith("PG") || env.ToString().Contains("DATABASE"))
@@ -40,29 +41,52 @@ if (isProduction)
             connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
             connectionBuilder.Username = userInfo[0];
             connectionBuilder.Password = userInfo[1];
-            connectionBuilder.SslMode = SslMode.Require;
-            connectionBuilder.TrustServerCertificate = true;
-            connectionBuilder.Timeout = 30;
-            
-            Console.WriteLine($"Configured database connection using DATABASE_URL:");
-            Console.WriteLine($"Host: {connectionBuilder.Host}");
-            Console.WriteLine($"Port: {connectionBuilder.Port}");
-            Console.WriteLine($"Database: {connectionBuilder.Database}");
-            Console.WriteLine($"Username: {connectionBuilder.Username}");
-            Console.WriteLine("Password: REDACTED");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
-            throw; // Rethrow to prevent silent failures
+            // Continue to try individual environment variables
         }
     }
-    else
+
+    // If DATABASE_URL parsing failed or wasn't available, use individual environment variables
+    if (string.IsNullOrEmpty(connectionBuilder.Password))
     {
-        throw new Exception("DATABASE_URL environment variable is not set");
+        Console.WriteLine("Using individual PostgreSQL environment variables");
+        
+        var host = Environment.GetEnvironmentVariable("PGHOST");
+        var port = Environment.GetEnvironmentVariable("PGPORT");
+        var database = Environment.GetEnvironmentVariable("PGDATABASE");
+        var username = Environment.GetEnvironmentVariable("PGUSER");
+        var password = Environment.GetEnvironmentVariable("PGPASSWORD");
+
+        if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(password))
+        {
+            throw new Exception("Required PostgreSQL environment variables are not set. Need PGHOST and PGPASSWORD at minimum.");
+        }
+
+        connectionBuilder.Host = host;
+        connectionBuilder.Port = int.TryParse(port, out int portNum) ? portNum : 5432;
+        connectionBuilder.Database = database ?? "railway";
+        connectionBuilder.Username = username ?? "postgres";
+        connectionBuilder.Password = password;
     }
 
+    // Add common settings
+    connectionBuilder.SslMode = SslMode.Require;
+    connectionBuilder.TrustServerCertificate = true;
+    connectionBuilder.Timeout = 30;
+
     var connectionString = connectionBuilder.ToString();
+
+    // Log connection info (without sensitive data)
+    Console.WriteLine($"Database connection info:");
+    Console.WriteLine($"Host: {connectionBuilder.Host}");
+    Console.WriteLine($"Port: {connectionBuilder.Port}");
+    Console.WriteLine($"Database: {connectionBuilder.Database}");
+    Console.WriteLine($"Username: {connectionBuilder.Username}");
+    Console.WriteLine("Password: [REDACTED]");
+    Console.WriteLine($"SSL Mode: {connectionBuilder.SslMode}");
 
     // Configure DbContext
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
