@@ -30,18 +30,17 @@ if (isProduction)
         // Parse and construct connection string from DATABASE_URL
         var databaseUri = new Uri(databaseUrl);
         var userInfo = databaseUri.UserInfo.Split(':');
-        var builder = new NpgsqlConnectionStringBuilder
+        var connBuilder = new NpgsqlConnectionStringBuilder
         {
             Host = databaseUri.Host,
             Port = databaseUri.Port,
             Username = userInfo[0],
             Password = userInfo[1],
             Database = databaseUri.AbsolutePath.TrimStart('/'),
-            SslMode = SslMode.Require,
-            TrustServerCertificate = true,
+            SslMode = SslMode.Require
         };
 
-        var connectionString = builder.ToString();
+        var connectionString = connBuilder.ToString();
         Console.WriteLine("PostgreSQL Connection string built successfully");
 
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -56,7 +55,7 @@ if (isProduction)
     catch (Exception ex)
     {
         Console.WriteLine($"Error configuring database: {ex.Message}");
-        throw; // Re-throw to ensure the application doesn't start with invalid database configuration
+        throw;
     }
 }
 else
@@ -75,7 +74,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios.
     app.UseHsts();
 }
 

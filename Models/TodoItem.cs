@@ -8,14 +8,14 @@ namespace MyMvcApp.Models
         public int Id { get; set; }
 
         // Task field with data annotations for validation
-        [Required(ErrorMessage = "Task is required.")]
-        [StringLength(100, ErrorMessage = "Task cannot be longer than 100 characters.")]
-        public string Task { get; set; }
+        [Required]
+        [MaxLength(200)]
+        public required string Task { get; set; }
 
         // Description field with data annotations for validation
-        [Required(ErrorMessage = "Description is required.")]
-        [StringLength(500, ErrorMessage = "Description cannot be longer than 500 characters.")]
-        public string Description { get; set; }
+        [Required]
+        [MaxLength(1000)]
+        public required string Description { get; set; }
 
         // Optional: Status to indicate if the task is completed
         public bool IsCompleted { get; set; } = false;

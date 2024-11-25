@@ -1,23 +1,22 @@
 # Use the official .NET SDK image for building
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /source
+WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY *.csproj .
+COPY ["MyMvcApp.csproj", "./"]
 RUN dotnet restore
 
-# Copy the rest of the files
+# Copy everything else and build
 COPY . .
+RUN dotnet build "MyMvcApp.csproj" -c Release -o /app/build
 
-# Build and publish the app
-RUN dotnet publish -c Release -o /app
+# Publish
+RUN dotnet publish "MyMvcApp.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-
-# Copy the published files from the build stage
-COPY --from=build /app .
+COPY --from=build /app/publish .
 
 # Install PostgreSQL client (if needed)
 RUN apt-get update \
