@@ -9,67 +9,72 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 // Configure database context based on environment
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
 {
-    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-    var isProduction = environment == "Production";
-
-    if (isProduction)
+    services.AddDbContext<T>(options =>
     {
-        // Use Railway's PostgreSQL in production
-        var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-        if (!string.IsNullOrEmpty(databaseUrl))
-        {
-            try
-            {
-                var databaseUri = new Uri(databaseUrl);
-                var userInfo = databaseUri.UserInfo.Split(':');
-                var builder = new NpgsqlConnectionStringBuilder
-                {
-                    Host = databaseUri.Host,
-                    Port = databaseUri.Port,
-                    Username = userInfo[0],
-                    Password = userInfo[1],
-                    Database = databaseUri.LocalPath.TrimStart('/'),
-                    SslMode = Npgsql.SslMode.Require,
-                    TrustServerCertificate = true,
-                    Pooling = true,
-                    MinPoolSize = 0,
-                    MaxPoolSize = 100,
-                    ConnectionIdleLifetime = 300
-                };
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var isProduction = environment == "Production";
 
-                options.UseNpgsql(builder.ToString(), npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorCodesToAdd: null);
-                });
-            }
-            catch (Exception ex)
+        if (isProduction)
+        {
+            // Use Railway's PostgreSQL in production
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            if (!string.IsNullOrEmpty(databaseUrl))
             {
-                var logger = LoggerFactory.Create(builder => builder.AddConsole())
-                    .CreateLogger("Program");
-                logger.LogError(ex, "Error configuring PostgreSQL");
-                throw;
+                try
+                {
+                    var databaseUri = new Uri(databaseUrl);
+                    var userInfo = databaseUri.UserInfo.Split(':');
+                    var builder = new NpgsqlConnectionStringBuilder
+                    {
+                        Host = databaseUri.Host,
+                        Port = databaseUri.Port,
+                        Username = userInfo[0],
+                        Password = userInfo[1],
+                        Database = databaseUri.LocalPath.TrimStart('/'),
+                        SslMode = Npgsql.SslMode.Require,
+                        TrustServerCertificate = true,
+                        Pooling = true,
+                        MinPoolSize = 0,
+                        MaxPoolSize = 100,
+                        ConnectionIdleLifetime = 300
+                    };
+
+                    options.UseNpgsql(builder.ToString(), npgsqlOptions =>
+                    {
+                        npgsqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorCodesToAdd: null);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Error configuring PostgreSQL for {typeof(T).Name}: {ex.Message}", ex);
+                }
+            }
+            else
+            {
+                throw new Exception($"DATABASE_URL environment variable is not set in production for {typeof(T).Name}");
             }
         }
         else
         {
-            throw new Exception("DATABASE_URL environment variable is not set in production");
+            // Use SQLite in development
+            var dbName = typeof(T).Name.Replace("Context", "").ToLower();
+            var connectionString = $"Data Source=./{dbName}.db";
+            options.UseSqlite(connectionString, sqliteOptions =>
+            {
+                sqliteOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+            });
         }
-    }
-    else
-    {
-        // Use SQLite in development
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        options.UseSqlite(connectionString, sqliteOptions =>
-        {
-            sqliteOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-        });
-    }
-});
+    });
+}
+
+// Configure both contexts
+ConfigureDbContext<ApplicationDbContext>(builder.Services);
+ConfigureDbContext<BlogDbContext>(builder.Services);
 
 var app = builder.Build();
 
@@ -84,56 +89,53 @@ else
     app.UseDeveloperExceptionPage();
 }
 
-// Apply migrations
+// Apply migrations for both contexts
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
     
-    try
+    async Task MigrateDbContext<T>(string contextName) where T : DbContext
     {
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        
-        // Log the current database provider
-        var database = context.Database;
-        logger.LogInformation("Database provider: {Provider}", database.ProviderName);
-        logger.LogInformation("Connection string: {ConnectionString}", database.GetConnectionString());
-        
-        // Ensure database is created
-        context.Database.EnsureCreated();
-        
-        // Apply pending migrations
-        if (database.GetPendingMigrations().Any())
+        try
         {
-            logger.LogInformation("Applying pending migrations...");
-            database.Migrate();
-        }
-        
-        // Test the database connection
-        var canConnect = database.CanConnect();
-        if (!canConnect)
-        {
-            throw new Exception("Cannot connect to the database after migration");
-        }
-        
-        logger.LogInformation("Database connection and migrations successful");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while setting up the database: {Message}", ex.Message);
-        
-        // Log additional details in development
-        if (app.Environment.IsDevelopment())
-        {
-            logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
-            logger.LogError("Source: {Source}", ex.Source);
-            if (ex.InnerException != null)
+            var context = services.GetRequiredService<T>();
+            var database = context.Database;
+            
+            // Log the current database provider
+            logger.LogInformation("{Context} provider: {Provider}", contextName, database.ProviderName);
+            logger.LogInformation("{Context} connection string: {ConnectionString}", contextName, database.GetConnectionString());
+            
+            // Ensure database is created
+            await database.EnsureCreatedAsync();
+            
+            // Apply pending migrations
+            if ((await database.GetPendingMigrationsAsync()).Any())
             {
-                logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
+                logger.LogInformation("Applying pending migrations for {Context}...", contextName);
+                await database.MigrateAsync();
+            }
+            
+            // Test the database connection
+            if (await database.CanConnectAsync())
+            {
+                logger.LogInformation("Database connection and migrations successful for {Context}", contextName);
+            }
+            else
+            {
+                throw new Exception($"Cannot connect to the database after migration for {contextName}");
             }
         }
-        throw; // Re-throw the exception after logging
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while setting up the {Context}: {Message}", contextName, ex.Message);
+            throw;
+        }
     }
+
+    // Migrate both contexts
+    await MigrateDbContext<ApplicationDbContext>("ApplicationDbContext");
+    await MigrateDbContext<BlogDbContext>("BlogDbContext");
 }
 
 app.UseHttpsRedirection();
