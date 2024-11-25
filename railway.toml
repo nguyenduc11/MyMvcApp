@@ -21,20 +21,20 @@
   ASPNETCORE_ENVIRONMENT = "Production"
   DOTNET_RUNNING_IN_CONTAINER = "true"
   PORT = "80"
-  # Database configuration will be automatically injected by Railway
-  # The following variables will be available:
-  # DATABASE_URL
-  # PGDATABASE
-  # PGHOST
-  # PGPASSWORD
-  # PGPORT
-  # PGUSER
-  
   # Additional configuration for better error visibility in production
   ASPNETCORE_DETAILED_ERRORS = "true"
   LOGGING_LOGLEVEL_DEFAULT = "Information"
   LOGGING_LOGLEVEL_MICROSOFT = "Warning"
   LOGGING_LOGLEVEL_ENTITYFRAMEWORKCORE = "Information"
+
+  # Note: The following variables will be automatically injected by Railway
+  # DATABASE_URL
+  # DATABASE_PUBLIC_URL
+  # PGDATABASE
+  # PGHOST
+  # PGPASSWORD
+  # PGPORT
+  # PGUSER
 
 [healthcheck]
   # Healthcheck to ensure the app is running properly

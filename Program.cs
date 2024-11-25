@@ -17,15 +17,52 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
         
         if (isProduction)
         {
-            // Use Railway's PostgreSQL in production
-            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-            if (string.IsNullOrEmpty(databaseUrl))
-            {
-                throw new Exception($"DATABASE_URL environment variable is not set in production for {typeof(T).Name}");
-            }
+            // Try to get connection info from individual environment variables first
+            var host = Environment.GetEnvironmentVariable("PGHOST");
+            var port = Environment.GetEnvironmentVariable("PGPORT");
+            var database = Environment.GetEnvironmentVariable("PGDATABASE");
+            var username = Environment.GetEnvironmentVariable("PGUSER");
+            var password = Environment.GetEnvironmentVariable("PGPASSWORD");
 
-            try
+            string connectionString;
+            
+            // Check if we have all the individual PostgreSQL environment variables
+            if (!string.IsNullOrEmpty(host) && 
+                !string.IsNullOrEmpty(port) && 
+                !string.IsNullOrEmpty(database) && 
+                !string.IsNullOrEmpty(username) && 
+                !string.IsNullOrEmpty(password))
             {
+                var npgsqlBuilder = new NpgsqlConnectionStringBuilder
+                {
+                    Host = host,
+                    Port = int.Parse(port),
+                    Database = database,
+                    Username = username,
+                    Password = password,
+                    SslMode = Npgsql.SslMode.Require,
+                    TrustServerCertificate = true,
+                    Pooling = true,
+                    MinPoolSize = 0,
+                    MaxPoolSize = 100,
+                    ConnectionIdleLifetime = 300
+                };
+                connectionString = npgsqlBuilder.ToString();
+            }
+            else
+            {
+                // Fallback to DATABASE_URL if individual variables are not available
+                var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+                if (string.IsNullOrEmpty(databaseUrl))
+                {
+                    // If neither option is available, try DATABASE_PUBLIC_URL as last resort
+                    databaseUrl = Environment.GetEnvironmentVariable("DATABASE_PUBLIC_URL");
+                    if (string.IsNullOrEmpty(databaseUrl))
+                    {
+                        throw new Exception($"No PostgreSQL connection information available for {typeof(T).Name}. Please set either individual PostgreSQL environment variables or DATABASE_URL");
+                    }
+                }
+
                 var databaseUri = new Uri(databaseUrl);
                 var userInfo = databaseUri.UserInfo.Split(':');
                 var npgsqlBuilder = new NpgsqlConnectionStringBuilder
@@ -42,24 +79,19 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
                     MaxPoolSize = 100,
                     ConnectionIdleLifetime = 300
                 };
+                connectionString = npgsqlBuilder.ToString();
+            }
 
-                var connectionString = npgsqlBuilder.ToString();
-                Console.WriteLine($"Configuring {typeof(T).Name} with PostgreSQL. Connection string: {connectionString}");
-                
-                options.UseNpgsql(connectionString, npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorCodesToAdd: null);
-                    npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-                });
-            }
-            catch (Exception ex)
+            Console.WriteLine($"Configuring {typeof(T).Name} with PostgreSQL. Connection string: {connectionString}");
+            
+            options.UseNpgsql(connectionString, npgsqlOptions =>
             {
-                Console.WriteLine($"Error configuring PostgreSQL for {typeof(T).Name}: {ex}");
-                throw;
-            }
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorCodesToAdd: null);
+                npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+            });
         }
         else
         {
