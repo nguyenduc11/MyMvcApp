@@ -10,56 +10,5 @@
   # Specify the service name on Railway
   service = "mvc-app-service"
   startCommand = "dotnet MyMvcApp.dll"
-  healthcheckPath = "/home"
-  healthcheckTimeout = 300
   restartPolicyType = "on_failure"
   restartPolicyMaxRetries = 5
-
-  # Define the environments for the app
-  [deploy.production]
-    # Use Railway's default deployment method for production
-    num_instances = 1
-    env = "production"
-
-[service]
-  name = "mvc-app-service"
-  type = "web"
-  plan = "free"
-  domains = []
-  numInstances = 1
-  env = "production"
-
-# PostgreSQL service configuration
-[service.postgres]
-  name = "postgres"
-  type = "postgres"
-  plan = "free"
-  domains = []
-  numInstances = 1
-
-[env]
-  # Define environment variables for your app (if needed)
-  ASPNETCORE_ENVIRONMENT = "Production"
-  DOTNET_RUNNING_IN_CONTAINER = "true"
-  PORT = "80"
-  # Additional configuration for better error visibility in production
-  ASPNETCORE_DETAILED_ERRORS = "true"
-  LOGGING_LOGLEVEL_DEFAULT = "Information"
-  LOGGING_LOGLEVEL_MICROSOFT = "Warning"
-  LOGGING_LOGLEVEL_ENTITYFRAMEWORKCORE = "Information"
-
-  # Note: The following variables will be automatically injected by Railway
-  # DATABASE_URL
-  # DATABASE_PUBLIC_URL
-  # PGDATABASE
-  # PGHOST
-  # PGPASSWORD
-  # PGPORT
-  # PGUSER
-
-[healthcheck]
-  # Healthcheck to ensure the app is running properly
-  path = "/home"
-  interval = 10
-  timeout = 5
-  retries = 3

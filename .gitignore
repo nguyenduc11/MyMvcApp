@@ -91,3 +91,8 @@ ScaffoldingReadMe.txt
 # Output folders
 bin/
 obj/
+
+# Environment Files
+.env
+.env.local
+.env.*.local

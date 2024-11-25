@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MyMvcApp.Models;
 using Npgsql;
 using System;
+using DotEnv.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,25 +21,71 @@ void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
         
         if (isProduction)
         {
-            // Configure the PostgreSQL connection string using Railway's environment variables
-            var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-            if (string.IsNullOrEmpty(connectionString))
+            // Log environment variables for debugging
+            Console.WriteLine("Database Environment Variables:");
+            Console.WriteLine($"DATABASE_URL: {Environment.GetEnvironmentVariable("DATABASE_URL")}");
+            Console.WriteLine($"PGHOST: {Environment.GetEnvironmentVariable("PGHOST")}");
+            Console.WriteLine($"PGPORT: {Environment.GetEnvironmentVariable("PGPORT")}");
+            Console.WriteLine($"PGDATABASE: {Environment.GetEnvironmentVariable("PGDATABASE")}");
+            Console.WriteLine($"PGUSER: {Environment.GetEnvironmentVariable("PGUSER")}");
+            Console.WriteLine($"PGPASSWORD length: {(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PGPASSWORD")) ? "0" : Environment.GetEnvironmentVariable("PGPASSWORD").Length)}");
+
+            // Load environment variables from .env file in development
+            if (!isProduction)
             {
-                // Build connection string from individual environment variables
-                var builder = new NpgsqlConnectionStringBuilder
-                {
-                    Host = Environment.GetEnvironmentVariable("PGHOST") ?? "postgres.railway.internal",
-                    Port = int.Parse(Environment.GetEnvironmentVariable("PGPORT") ?? "5432"),
-                    Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway",
-                    Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres",
-                    Password = Environment.GetEnvironmentVariable("PGPASSWORD"),
-                    SslMode = SslMode.Require,
-                    TrustServerCertificate = true
-                };
-                connectionString = builder.ToString();
+                DotEnv.Load();
+                DotEnv.AutoTrim = true;
+                DotEnv.AutoParse = true;
             }
 
-            // Configure DbContext with the connection string
+            // Log environment type
+            Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
+
+            // Build connection string using environment variables
+            var connectionBuilder = new NpgsqlConnectionStringBuilder();
+
+            // Try to use DATABASE_URL first
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            if (!string.IsNullOrEmpty(databaseUrl))
+            {
+                try
+                {
+                    var uri = new Uri(databaseUrl);
+                    var userInfo = uri.UserInfo.Split(':');
+                    connectionBuilder.Host = uri.Host;
+                    connectionBuilder.Port = uri.Port > 0 ? uri.Port : 5432;
+                    connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
+                    connectionBuilder.Username = userInfo[0];
+                    connectionBuilder.Password = userInfo[1];
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
+                }
+            }
+
+            // If DATABASE_URL parsing failed or wasn't available, use individual environment variables
+            if (string.IsNullOrEmpty(connectionBuilder.Password))
+            {
+                connectionBuilder.Host = Environment.GetEnvironmentVariable("PGHOST") ?? "localhost";
+                connectionBuilder.Port = int.TryParse(Environment.GetEnvironmentVariable("PGPORT"), out int port) ? port : 5432;
+                connectionBuilder.Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway";
+                connectionBuilder.Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres";
+                connectionBuilder.Password = Environment.GetEnvironmentVariable("PGPASSWORD");
+            }
+
+            // Add common settings
+            connectionBuilder.SslMode = isProduction ? SslMode.Require : SslMode.Prefer;
+            connectionBuilder.TrustServerCertificate = true;
+            connectionBuilder.Timeout = 30;
+
+            var connectionString = connectionBuilder.ToString();
+
+            // Log the connection string (without password)
+            var logBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Password = "REDACTED" };
+            Console.WriteLine($"Connection string (redacted): {logBuilder}");
+
+            // Configure DbContext
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
                 npgsqlOptions.EnableRetryOnFailure(
