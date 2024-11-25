@@ -13,20 +13,17 @@ builder.Services.AddControllersWithViews();
 Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
 Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 
+// Log all environment variables for debugging
+Console.WriteLine("\nAll environment variables:");
+foreach (System.Collections.DictionaryEntry env in Environment.GetEnvironmentVariables())
+{
+    var key = env.Key.ToString();
+    var value = env.Value?.ToString();
+    Console.WriteLine($"{key}: {(key.Contains("PASSWORD") ? "REDACTED" : value ?? "null")}");
+}
+
 if (isProduction)
 {
-    // Log all environment variables for debugging
-    Console.WriteLine("\nAll environment variables:");
-    foreach (System.Collections.DictionaryEntry env in Environment.GetEnvironmentVariables())
-    {
-        var key = env.Key.ToString();
-        var value = env.Value?.ToString();
-        if (key.StartsWith("PG") || key.Contains("DATABASE") || key.Contains("POSTGRES"))
-        {
-            Console.WriteLine($"{key}: {(key.Contains("PASSWORD") ? "REDACTED" : value ?? "null")}");
-        }
-    }
-
     var connectionBuilder = new NpgsqlConnectionStringBuilder();
     bool connectionConfigured = false;
 
