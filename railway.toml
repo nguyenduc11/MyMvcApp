@@ -15,3 +15,5 @@
 
 [deploy.env]
   PORT = "8080"
+  ASPNETCORE_URLS = "http://+:8080"
+  ASPNETCORE_ENVIRONMENT = "Production"

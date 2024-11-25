@@ -13,74 +13,78 @@ builder.Services.AddControllersWithViews();
 Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
 Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 
-// Configure database contexts
-void ConfigureDbContext<T>(IServiceCollection services) where T : DbContext
+if (isProduction)
 {
-    services.AddDbContext<T>(options =>
+    // Log all environment variables for debugging
+    foreach (var env in Environment.GetEnvironmentVariables().Keys)
     {
-        // Build connection string using environment variables
-        var connectionBuilder = new NpgsqlConnectionStringBuilder();
-
-        // Try to use DATABASE_URL first
-        var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-        if (!string.IsNullOrEmpty(databaseUrl))
+        if (env.ToString().StartsWith("PG") || env.ToString().Contains("DATABASE"))
         {
-            try
-            {
-                var uri = new Uri(databaseUrl);
-                var userInfo = uri.UserInfo.Split(':');
-                connectionBuilder.Host = uri.Host;
-                connectionBuilder.Port = uri.Port > 0 ? uri.Port : 5432;
-                connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
-                connectionBuilder.Username = userInfo[0];
-                connectionBuilder.Password = userInfo[1];
-                
-                Console.WriteLine($"Using DATABASE_URL for connection. Host: {connectionBuilder.Host}, Port: {connectionBuilder.Port}, Database: {connectionBuilder.Database}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
-            }
+            Console.WriteLine($"{env}: {(env.ToString().Contains("PASSWORD") ? "REDACTED" : Environment.GetEnvironmentVariable(env.ToString()))}");
         }
+    }
 
-        // If DATABASE_URL parsing failed or wasn't available, use individual environment variables
-        if (string.IsNullOrEmpty(connectionBuilder.Password))
+    var connectionBuilder = new NpgsqlConnectionStringBuilder();
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    
+    if (!string.IsNullOrEmpty(databaseUrl))
+    {
+        try
         {
-            connectionBuilder.Host = Environment.GetEnvironmentVariable("PGHOST") ?? "localhost";
-            connectionBuilder.Port = int.TryParse(Environment.GetEnvironmentVariable("PGPORT"), out int port) ? port : 5432;
-            connectionBuilder.Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway";
-            connectionBuilder.Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres";
-            connectionBuilder.Password = Environment.GetEnvironmentVariable("PGPASSWORD");
+            // Parse Railway's DATABASE_URL
+            var uri = new Uri(databaseUrl);
+            var userInfo = uri.UserInfo.Split(':');
             
-            Console.WriteLine($"Using individual environment variables for connection. Host: {connectionBuilder.Host}, Port: {connectionBuilder.Port}, Database: {connectionBuilder.Database}");
+            connectionBuilder.Host = uri.Host;
+            connectionBuilder.Port = uri.Port;
+            connectionBuilder.Database = uri.AbsolutePath.TrimStart('/');
+            connectionBuilder.Username = userInfo[0];
+            connectionBuilder.Password = userInfo[1];
+            connectionBuilder.SslMode = SslMode.Require;
+            connectionBuilder.TrustServerCertificate = true;
+            connectionBuilder.Timeout = 30;
+            
+            Console.WriteLine($"Configured database connection using DATABASE_URL:");
+            Console.WriteLine($"Host: {connectionBuilder.Host}");
+            Console.WriteLine($"Port: {connectionBuilder.Port}");
+            Console.WriteLine($"Database: {connectionBuilder.Database}");
+            Console.WriteLine($"Username: {connectionBuilder.Username}");
+            Console.WriteLine("Password: REDACTED");
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
+            throw; // Rethrow to prevent silent failures
+        }
+    }
+    else
+    {
+        throw new Exception("DATABASE_URL environment variable is not set");
+    }
 
-        // Add common settings
-        connectionBuilder.SslMode = isProduction ? SslMode.Require : SslMode.Prefer;
-        connectionBuilder.TrustServerCertificate = true;
-        connectionBuilder.Timeout = 30;
+    var connectionString = connectionBuilder.ToString();
 
-        var connectionString = connectionBuilder.ToString();
-
-        // Log the connection string (without password)
-        var logBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Password = "REDACTED" };
-        Console.WriteLine($"Connection string (redacted): {logBuilder}");
-
-        // Configure DbContext
+    // Configure DbContext
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    {
         options.UseNpgsql(connectionString, npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorCodesToAdd: null);
-            npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
         });
     });
 }
-
-// Configure both contexts
-ConfigureDbContext<ApplicationDbContext>(builder.Services);
-ConfigureDbContext<BlogDbContext>(builder.Services);
+else
+{
+    // Development configuration
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    {
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        options.UseSqlite(connectionString);
+    });
+}
 
 var app = builder.Build();
 
@@ -90,100 +94,10 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-else
-{
-    app.UseDeveloperExceptionPage();
-}
-
-// Apply migrations and ensure database is created
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-
-    async Task MigrateDbContextAsync<T>(string contextName) where T : DbContext
-    {
-        try
-        {
-            var context = services.GetRequiredService<T>();
-            var database = context.Database;
-
-            // Log database information
-            logger.LogInformation(
-                "Database info for {Context}: Provider={Provider}, ConnectionString={ConnectionString}",
-                contextName,
-                database.ProviderName,
-                database.GetConnectionString()
-            );
-
-            // Create database if it doesn't exist
-            var created = await database.EnsureCreatedAsync();
-            if (created)
-            {
-                logger.LogInformation("Database created for {Context}", contextName);
-            }
-
-            // Get pending migrations
-            var pendingMigrations = await database.GetPendingMigrationsAsync();
-            if (pendingMigrations.Any())
-            {
-                logger.LogInformation(
-                    "Applying {Count} pending migrations for {Context}: {Migrations}",
-                    pendingMigrations.Count(),
-                    contextName,
-                    string.Join(", ", pendingMigrations)
-                );
-
-                await database.MigrateAsync();
-                logger.LogInformation("Migrations applied successfully for {Context}", contextName);
-            }
-            else
-            {
-                logger.LogInformation("No pending migrations for {Context}", contextName);
-            }
-
-            // Verify connection
-            if (await database.CanConnectAsync())
-            {
-                logger.LogInformation("Successfully connected to database for {Context}", contextName);
-                
-                // Log table names
-                var tableNames = await context.Database.SqlQuery<string>($@"
-                    SELECT table_name 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'public'
-                ").ToListAsync();
-                
-                logger.LogInformation(
-                    "Tables in database for {Context}: {Tables}",
-                    contextName,
-                    string.Join(", ", tableNames)
-                );
-            }
-            else
-            {
-                throw new Exception($"Cannot connect to database for {contextName}");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "An error occurred while setting up the database for {Context}: {Message}",
-                contextName,
-                ex.Message
-            );
-            throw;
-        }
-    }
-
-    // Migrate both contexts
-    await MigrateDbContextAsync<ApplicationDbContext>("ApplicationDbContext");
-    await MigrateDbContextAsync<BlogDbContext>("BlogDbContext");
-}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
 app.UseAuthorization();
 
