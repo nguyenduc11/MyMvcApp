@@ -15,11 +15,24 @@ Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable(
 
 if (isProduction)
 {
+    // Log all environment variables for debugging
+    Console.WriteLine("\nAll environment variables:");
+    foreach (System.Collections.DictionaryEntry env in Environment.GetEnvironmentVariables())
+    {
+        var key = env.Key.ToString();
+        var value = env.Value?.ToString();
+        if (key.StartsWith("PG") || key.Contains("DATABASE") || key.Contains("POSTGRES"))
+        {
+            Console.WriteLine($"{key}: {(key.Contains("PASSWORD") ? "REDACTED" : value ?? "null")}");
+        }
+    }
+
     var connectionBuilder = new NpgsqlConnectionStringBuilder();
     bool connectionConfigured = false;
 
     // First try DATABASE_URL
     var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    Console.WriteLine($"\nTrying DATABASE_URL connection method:");
     Console.WriteLine($"DATABASE_URL present: {!string.IsNullOrEmpty(databaseUrl)}");
 
     if (!string.IsNullOrEmpty(databaseUrl))
@@ -47,19 +60,22 @@ if (isProduction)
     // If DATABASE_URL failed, try individual variables
     if (!connectionConfigured)
     {
-        Console.WriteLine("Attempting to use individual PostgreSQL environment variables");
+        Console.WriteLine("\nTrying individual PostgreSQL variables:");
         
         var pgHost = Environment.GetEnvironmentVariable("PGHOST");
         var pgPort = Environment.GetEnvironmentVariable("PGPORT");
-        var pgDatabase = Environment.GetEnvironmentVariable("PGDATABASE") ?? Environment.GetEnvironmentVariable("POSTGRES_DB");
-        var pgUser = Environment.GetEnvironmentVariable("PGUSER") ?? Environment.GetEnvironmentVariable("POSTGRES_USER");
-        var pgPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+        var pgDatabase = Environment.GetEnvironmentVariable("PGDATABASE") ?? 
+                        Environment.GetEnvironmentVariable("POSTGRES_DB");
+        var pgUser = Environment.GetEnvironmentVariable("PGUSER") ?? 
+                    Environment.GetEnvironmentVariable("POSTGRES_USER");
+        var pgPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? 
+                        Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
-        Console.WriteLine($"PGHOST: {pgHost}");
-        Console.WriteLine($"PGPORT: {pgPort}");
-        Console.WriteLine($"Database: {pgDatabase}");
-        Console.WriteLine($"Username: {pgUser}");
-        Console.WriteLine($"Password length: {(string.IsNullOrEmpty(pgPassword) ? 0 : pgPassword.Length)}");
+        Console.WriteLine($"PGHOST: {pgHost ?? "null"}");
+        Console.WriteLine($"PGPORT: {pgPort ?? "null"}");
+        Console.WriteLine($"Database: {pgDatabase ?? "null"}");
+        Console.WriteLine($"Username: {pgUser ?? "null"}");
+        Console.WriteLine($"Password present: {!string.IsNullOrEmpty(pgPassword)}");
 
         if (!string.IsNullOrEmpty(pgHost) && !string.IsNullOrEmpty(pgPassword))
         {
@@ -72,11 +88,17 @@ if (isProduction)
 
             Console.WriteLine("Successfully configured using individual variables");
         }
+        else
+        {
+            Console.WriteLine("Failed to configure using individual variables");
+            if (string.IsNullOrEmpty(pgHost)) Console.WriteLine("- PGHOST is missing");
+            if (string.IsNullOrEmpty(pgPassword)) Console.WriteLine("- PGPASSWORD is missing");
+        }
     }
 
     if (!connectionConfigured)
     {
-        throw new Exception("Failed to configure PostgreSQL connection. Neither DATABASE_URL nor individual environment variables are properly set.");
+        throw new Exception("Failed to configure PostgreSQL connection. Neither DATABASE_URL nor individual environment variables are properly set. Check the logs above for details.");
     }
 
     // Add common settings
@@ -87,7 +109,7 @@ if (isProduction)
     var connectionString = connectionBuilder.ToString();
 
     // Log connection info (without sensitive data)
-    Console.WriteLine($"Final database connection info:");
+    Console.WriteLine("\nFinal database connection info:");
     Console.WriteLine($"Host: {connectionBuilder.Host}");
     Console.WriteLine($"Port: {connectionBuilder.Port}");
     Console.WriteLine($"Database: {connectionBuilder.Database}");

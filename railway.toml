@@ -18,8 +18,13 @@
   ASPNETCORE_URLS = "http://+:8080"
   ASPNETCORE_ENVIRONMENT = "Production"
 
-  # Note: These are placeholders. The actual values will be injected by Railway
+  # PostgreSQL Configuration
   PGHOST = "postgres.railway.internal"
   PGPORT = "5432"
   PGDATABASE = "railway"
   PGUSER = "postgres"
+  POSTGRES_DB = "railway"
+  POSTGRES_USER = "postgres"
+
+  # Note: PGPASSWORD and POSTGRES_PASSWORD are automatically injected by Railway
+  DATABASE_URL = "postgresql://postgres:${PGPASSWORD}@postgres.railway.internal:5432/railway"

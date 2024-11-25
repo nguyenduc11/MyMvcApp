@@ -21,9 +21,13 @@ RUN apt-get update \
        libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set environment variables
+# Set default environment variables
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV PGHOST=postgres.railway.internal
+ENV PGPORT=5432
+ENV PGDATABASE=railway
+ENV PGUSER=postgres
 
 # Expose the port
 EXPOSE 8080
