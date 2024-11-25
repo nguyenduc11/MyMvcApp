@@ -16,26 +16,55 @@ Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable(
 // Configure database based on environment
 if (isProduction)
 {
-    // Use DATABASE_URL for production (Railway)
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (string.IsNullOrEmpty(databaseUrl))
+    try
     {
-        throw new Exception("Production environment requires DATABASE_URL to be set");
-    }
+        // Use DATABASE_URL for production (Railway)
+        var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+        Console.WriteLine($"Database URL exists: {!string.IsNullOrEmpty(databaseUrl)}");
 
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(databaseUrl, npgsqlOptions =>
+        if (string.IsNullOrEmpty(databaseUrl))
         {
-            npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorCodesToAdd: null);
-        }));
+            throw new Exception("Production environment requires DATABASE_URL to be set");
+        }
+
+        // Parse and construct connection string from DATABASE_URL
+        var databaseUri = new Uri(databaseUrl);
+        var userInfo = databaseUri.UserInfo.Split(':');
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = databaseUri.Host,
+            Port = databaseUri.Port,
+            Username = userInfo[0],
+            Password = userInfo[1],
+            Database = databaseUri.AbsolutePath.TrimStart('/'),
+            SslMode = SslMode.Require,
+            TrustServerCertificate = true,
+        };
+
+        var connectionString = builder.ToString();
+        Console.WriteLine("PostgreSQL Connection string built successfully");
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorCodesToAdd: null);
+            }));
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error configuring database: {ex.Message}");
+        throw; // Re-throw to ensure the application doesn't start with invalid database configuration
+    }
 }
 else
 {
     // Use SQLite for development
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    Console.WriteLine($"Development connection string exists: {!string.IsNullOrEmpty(connectionString)}");
+    
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(connectionString));
 }
